@@ -18,6 +18,84 @@ const mimeTypes = {
     '.ico': 'image/x-icon'
 };
 
+// APIプロキシ処理関数
+function handleApiProxy(req, res, requestPath) {
+    const https = require('https');
+    const querystring = require('querystring');
+    
+    console.log(`🔄 APIプロキシリクエスト: ${req.method} ${req.url}`);
+    
+    // プロキシ対象のAPI URL
+    const API_BASE = 'https://aablnq3wnk.execute-api.ap-northeast-1.amazonaws.com/report-v2t-dev';
+    
+    // URLを解析してクエリパラメータを取得
+    const urlParts = req.url.split('?');
+    const queryParams = urlParts[1] || '';
+    const targetUrl = API_BASE + (queryParams ? '?' + queryParams : '');
+    
+    console.log(`🎯 プロキシ先URL: ${targetUrl}`);
+    
+    const options = {
+        method: req.method,
+        headers: {
+            'User-Agent': 'Mozilla/5.0 (compatible; Bookmarklet-Proxy/1.0)',
+            'Accept': 'application/json, text/plain, */*',
+            'Accept-Language': 'ja,en-US;q=0.9,en;q=0.8'
+        }
+    };
+    
+    const proxyReq = https.request(targetUrl, options, (proxyRes) => {
+        console.log(`📡 API応答: ${proxyRes.statusCode} ${proxyRes.statusMessage}`);
+        
+        // CORSヘッダーを設定
+        setCORSHeaders(res);
+        res.setHeader('Content-Type', 'application/json; charset=utf-8');
+        
+        // ステータスコードを設定
+        res.writeHead(proxyRes.statusCode);
+        
+        // レスポンスデータを収集
+        let responseData = '';
+        proxyRes.on('data', (chunk) => {
+            responseData += chunk;
+        });
+        
+        proxyRes.on('end', () => {
+            console.log(`📦 レスポンスデータ: ${responseData.substring(0, 200)}...`);
+            res.end(responseData);
+        });
+    });
+    
+    proxyReq.on('error', (error) => {
+        console.error('❌ プロキシエラー:', error.message);
+        setCORSHeaders(res);
+        res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify({ 
+            error: 'Proxy Error', 
+            message: error.message,
+            timestamp: new Date().toISOString(),
+            targetUrl: targetUrl
+        }));
+    });
+    
+    proxyReq.on('timeout', () => {
+        console.error('⏰ プロキシタイムアウト');
+        setCORSHeaders(res);
+        res.writeHead(504, { 'Content-Type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify({
+            error: 'Gateway Timeout',
+            message: 'APIリクエストがタイムアウトしました',
+            timestamp: new Date().toISOString()
+        }));
+    });
+    
+    // タイムアウトを設定
+    proxyReq.setTimeout(30000);
+    
+    // リクエスト送信
+    proxyReq.end();
+}
+
 // CORSヘッダーを設定する関数
 function setCORSHeaders(res) {
     res.setHeader('Access-Control-Allow-Origin', '*');
@@ -193,8 +271,12 @@ const server = http.createServer((req, res) => {
         return;
     }
 
-    // ファイルパスを構築
-    let filePath = path.join(process.cwd(), requestPath);
+    // プロキシ機能を追加
+    if (requestPath.startsWith('/api/')) {
+        // APIプロキシの処理
+        handleApiProxy(req, res, requestPath);
+        return;
+    }
     
     // ルートパスの場合はindex.htmlを探す
     if (requestPath === '/' || requestPath === '') {

@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>営業日報</title>
+    <style>
+        /* リセットCSS */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: "Hiragino Sans", "Hiragino Kaku Gothic ProN", Meiryo, sans-serif;
+        }
+
+        /* 全体のレイアウト */
+        body {
+            background-color: #f5f5f5;
+            color: #333;
+            line-height: 1.6;
+        }
+
+        /* ヘッダースタイル */
+        .header {
+            background-color: #333;
+            color: white;
+            padding: 10px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header-title {
+            display: flex;
+            align-items: center;
+        }
+
+        .header-title span {
+            margin: 0 5px;
+        }
+
+        .hamburger-menu {
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            width: 25px;
+            height: 20px;
+        }
+
+        .hamburger-menu div {
+            width: 100%;
+            height: 3px;
+            background-color: white;
+        }
+
+        /* メインコンテンツ */
+        .container {
+            width: 100%;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        /* タイトルエリア */
+        .title-area {
+            background-color: #FF9800;
+            color: white;
+            padding: 10px 20px;
+            margin-bottom: 20px;
+            border-radius: 4px;
+        }
+
+        /* フォームグリッドレイアウト */
+        .form-grid {
+            display: grid;
+            grid-template-columns: 120px 1fr;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
+        /* ラベル */
+        .form-label {
+            text-align: right;
+            padding-top: 8px;
+            color: #0055A6;
+            font-weight: bold;
+        }
+
+        /* 入力フィールド全般 */
+        input, select, textarea {
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            width: 100%;
+        }
+
+        /* 複数フィールドの横並び */
+        .form-fields {
+            display: flex;
+            gap: 10px;
+        }
+
+        .form-fields > div {
+            flex: 1;
+        }
+
+        /* テキストエリア */
+        textarea {
+            width: 100%;
+            height: 100px;
+            resize: vertical;
+        }
+
+        /* 添付資料エリア */
+        .attachments {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+        }
+
+        /* ボタンエリア */
+        .button-area {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .btn {
+            padding: 8px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        .btn-back {
+            background-color: #f0f0f0;
+            color: #333;
+        }
+
+        .btn-save {
+            background-color: #FF9800;
+            color: white;
+        }
+
+        /* レスポンシブ対応 */
+        @media (max-width: 768px) {
+            .form-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .form-label {
+                text-align: left;
+                padding-top: 0;
+            }
+
+            .attachments {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- ヘッダー -->
+    <header class="header">
+        <div class="hamburger-menu">
+            <div></div>
+            <div></div>
+            <div></div>
+        </div>
+        <div class="header-title">
+            <span>MONO-X Report-v2t for ChromeExtension Demo</span>
+            <span>▶</span>
+            <span>営業日報</span>
+        </div>
+        <div>1 ▼</div>
+    </header>
+
+    <!-- メインコンテンツ -->
+    <div class="container">
+        <!-- タイトル -->
+        <div class="title-area">
+            <h2>営業日報（Report-v2t for ChromeExtensionのDEMO用）</h2>
+        </div>
+
+        <!-- フォーム -->
+        <form id="salesReportForm">
+            <!-- 訪問日 -->
+            <div class="form-grid">
+                <div class="form-label">訪問日</div>
+                <div>
+                    <input type="date" id="visitDate" name="visitDate" value="2025-04-22" title="訪問日">
+                </div>
+            </div>
+
+            <!-- 訪問先 -->
+            <div class="form-grid">
+                <div class="form-label">訪問先</div>
+                <div class="form-fields">
+                    <div>
+                        <select id="visitType" name="visitType" title="訪問先タイプ">
+                            <option>MONO-X</option>
+                            <option>ホテイフーズ</option>
+                        </select>
+                    </div>
+                    <div>
+                        <input type="text" id="visitCompany" name="visitCompany" placeholder="訪問先会社名">
+                    </div>
+                </div>
+            </div>
+
+            <!-- 担当者1 -->
+            <div class="form-grid">
+                <div class="form-label">担当者1</div>
+                <div class="form-fields">
+                    <div>
+                        <select id="department1" name="department1" title="担当者1の部署">
+                            <option>六本木ヒルズ営業所</option>
+                            <option>横浜営業所</option>
+                        </select>
+                    </div>
+                    <div>
+                        <input type="text" id="person1" name="person1" placeholder="担当者名">
+                    </div>
+                </div>
+            </div>
+
+            <!-- 担当者2 -->
+            <div class="form-grid">
+                <div class="form-label">担当者2</div>
+                <div class="form-fields">
+                    <div>
+                        <select id="department2" name="department2" title="担当者2の部署">
+                            <option>プロダクト事業部</option>
+                            <option>クラウド事業部</option>
+                        </select>
+                    </div>
+                    <div>
+                        <input type="text" id="person2" name="person2" placeholder="担当者2">
+                    </div>
+                </div>
+            </div>
+
+            <!-- 担当者3 -->
+            <div class="form-grid">
+                <div class="form-label">担当者3</div>
+                <div class="form-fields">
+                    <div>
+                        <select id="department3" name="department3" title="担当者3の部署">
+                            <option>プロダクト事業部</option>
+                            <option>クラウド事業部</option>
+                        </select>
+                    </div>
+                    <div>
+                        <input type="text" id="person3" name="person3" placeholder="担当者3">
+                    </div>
+                </div>
+            </div>
+
+            <!-- 同席者1 -->
+            <div class="form-grid">
+                <div class="form-label">同席者1</div>
+                <div class="form-fields">
+                    <div>
+                        <select id="colleague1" name="colleague1" title="同席者1">
+                            <option>谷下</option>
+                            <option>吉空</option>
+                            <option>戸陸</option>
+                            <option>上田</option>
+                            <option>東田</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 同席者2 -->
+            <div class="form-grid">
+                <div class="form-label">同席者2</div>
+                <div class="form-fields">
+                    <div>
+                        <select id="colleague2" name="colleague2" title="同席者2">
+                            <option>谷下</option>
+                            <option>吉空</option>
+                            <option>戸陸</option>
+                            <option>上田</option>
+                            <option>東田</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 同席者3 -->
+            <div class="form-grid">
+                <div class="form-label">同席者3</div>
+                <div class="form-fields">
+                    <div>
+                        <select id="colleague3" name="colleague3" title="同席者3">
+                            <option>同席者名3</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 訪問目的 -->
+            <div class="form-grid">
+                <div class="form-label">訪問目的</div>
+                <div>
+                    <input type="text" id="visitPurpose" name="visitPurpose" placeholder="訪問目的">
+                </div>
+            </div>
+
+            <!-- 商談内容 -->
+            <div class="form-grid">
+                <div class="form-label">商談内容</div>
+                <div>
+                    <textarea id="meetingContent" name="meetingContent" placeholder="日報を入力"></textarea>
+                </div>
+            </div>
+
+            <!-- 添付資料 -->
+            <div class="form-grid">
+                <div class="form-label">添付資料</div>
+                <div class="attachments">
+                    <input type="file" id="attachment1" name="attachment1" title="添付資料1">
+                    <input type="file" id="attachment2" name="attachment2" title="添付資料2">
+                    <input type="file" id="attachment3" name="attachment3" title="添付資料3">
+                    <input type="file" id="attachment4" name="attachment4" title="添付資料4">
+                </div>
+            </div>
+
+            <!-- 所属長コメント -->
+            <div class="form-grid">
+                <div class="form-label">所属長コメント</div>
+                <div>
+                    <textarea id="managerComment" name="managerComment" placeholder="所属長コメント"></textarea>
+                </div>
+            </div>
+
+            <!-- ボタンエリア -->
+            <div class="button-area">
+                <button type="button" class="btn btn-back" id="backButton">戻る</button>
+                <button type="button" class="btn btn-save" id="saveButton">保存</button>
+            </div>
+        </form>
+    </div>
+
+    <script>
+        // JavaScriptの実装
+        document.addEventListener('DOMContentLoaded', function() {
+            // 現在の日付を訪問日のデフォルト値として設定
+            const today = new Date();
+            const yyyy = today.getFullYear();
+            const mm = String(today.getMonth() + 1).padStart(2, '0');
+            const dd = String(today.getDate()).padStart(2, '0');
+            const formattedDate = `${yyyy}-${mm}-${dd}`;
+            
+            const visitDateInput = document.getElementById('visitDate');
+            if (!visitDateInput.value) {
+                visitDateInput.value = formattedDate;
+            }
+
+            // 保存ボタンのクリックイベント
+            document.getElementById('saveButton').addEventListener('click', function() {
+                // バリデーションチェック
+                const visitDate = document.getElementById('visitDate').value;
+                const visitCompany = document.getElementById('visitCompany').value;
+                
+                if (!visitDate) {
+                    alert('訪問日を入力してください。');
+                    return;
+                }
+                
+                if (!visitCompany) {
+                    alert('訪問先会社名を入力してください。');
+                    return;
+                }
+                
+                // フォームデータの収集
+                const formData = new FormData(document.getElementById('salesReportForm'));
+                const formDataObj = {};
+                
+                formData.forEach((value, key) => {
+                    formDataObj[key] = value;
+                });
+                
+                // 通常はここでバックエンドにデータを送信しますが、
+                // この例ではコンソールにデータを出力するだけにします
+                console.log('送信データ:', formDataObj);
+                
+                // 保存成功のメッセージ
+                alert('営業日報が保存されました。');
+            });
+            
+            // 戻るボタンのクリックイベント
+            document.getElementById('backButton').addEventListener('click', function() {
+                // 確認ダイアログを表示
+                const confirmed = confirm('入力内容が破棄されますが、よろしいですか？');
+                if (confirmed) {
+                    // 通常は前のページに戻る処理を行いますが、
+                    // この例ではリロードするだけにします
+                    // window.history.back();
+                    alert('前のページに戻ります');
+                }
+            });
+
+            // ハンバーガーメニューのクリックイベント
+            document.querySelector('.hamburger-menu').addEventListener('click', function() {
+                alert('メニューが開きます');
+                // 実際のメニュー表示処理はここに実装します
+            });
+        });
+    </script>
+</body>
+</html>

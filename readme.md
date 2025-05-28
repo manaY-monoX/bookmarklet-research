@@ -24,22 +24,36 @@
 └── readme.md           # このドキュメント
 ```
 
-## 使用方法
+## CORS問題の解決
 
-### 1. セットアップ
+このBookmarkletはAPI呼び出しを行うため、ローカルファイル（`file://`）では動作しません。以下の方法でローカルサーバーを起動してテストしてください。
 
-1. **Node.jsの準備**: minify.jsの実行にはNode.jsが必要です
-2. **API設定の確認**: `code.js`内の以下の設定値を確認してください：
-   ```javascript
-   var API_ENDPOINT = 'https://aablnq3wnk.execute-api.ap-northeast-1.amazonaws.com/report-v2t-dev';
-   var SK = '20250521095554'; // 対象データのソートキー
+### 方法1: Node.jsローカルサーバー（推奨）
+
+1. **サーバー起動**:
+   ```bash
+   # 基本的な起動
+   node server.js
+   
+   # またはnpmスクリプトを使用
+   npm start
    ```
-3. code.jsのminify
 
-`minify.js`により、`code.js`をブックマーク用にminifyします。
+2. **ブラウザでアクセス**: 
+   - `http://localhost:8000` にアクセス
+   - `index.html` をクリックして開く
 
-``` bash
-node minify.js code.js
+3. **Bookmarkletのテスト**:
+   - 作成したBookmarkletをクリックして動作確認
+
+### 方法2: 別のポートを使用
+
+```bash
+# ポート3000で起動
+PORT=3000 node server.js
+
+# Windows の場合
+set PORT=3000 && node server.js
 ```
 
 ### 2. Bookmarkletの作成
@@ -79,73 +93,15 @@ node minify.js code.js
 ### データ構造
 
 DynamoDBから取得される想定データ構造：
-
-作成したレポートの構造を保存するDB（result）
-
-### DynamoDB
-
-``` json
+```javascript
 {
-  "pk": {
-    "S": string
-  },
-  "sk": {
-    "S": string
-  },
-  "customPrompt": {
-    "S": string
-  },
-  "meeting_data": {
-    "M": {
-      "cost": {
-        "S": string
-      },
-      "hearing_contents": {
-        "S": string
-      },
-      "meeting_purpose": {
-        "S": string
-      },
-      "next_actions": {
-        "S": string
-      },
-      "other": {
-        "S": string
-      },
-      "proposal": {
-        "S": string
-      },
-      "reaction": {
-        "S": string
-      }
-    }
-  },
-  "states": {
-    "S": string
-  },
-  "transcribedText": {
-    "S": string
-  }
+  "sk": "20250521095554",
+  "meeting_data": {
+    "meeting_purpose": "営業会議の内容...",
+    // その他のフィールド
+  }
 }
 ```
-<!-- 
-### custom_prompt
-
-custom prompt libraryを保存するDB
-
-``` json
-{
-  "pk": {
-    "S": "{primary_key_uuid}"
-  },
-  "prompt": {
-    "S": "{prompt_content}"
-  },
-  "prompt_name": {
-    "S": "{prompt_title}"
-  }
-}
-``` -->
 
 ### フォームフィールド対応
 

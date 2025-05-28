@@ -1,205 +1,338 @@
-// minify.js - 改良版
-
-const fs = require('fs');
-const path = require('path');
-
-/**
- * JavaScriptコードをMinifyして一行にする関数（改良版）
- * @param {string} code - Minifyする元のJavaScriptコード
- * @returns {string} Minifyされた一行のJavaScriptコード
- */
-function minifyJavaScript(code) {
-  console.log('🔄 Minify処理を開始します...');
+javascript:(function(){
+  // 1. 設定値の定義
+  var API_ENDPOINT = 'https://aablnq3wnk.execute-api.ap-northeast-1.amazonaws.com/report-v2t-dev';
+  var SK = '20250521095554'; // 今回指定されたソートキー
+  var DEBUG_MODE = false; // 本番環境では false に設定
   
-  const stringLiterals = [];
-  let stringCounter = 0;
+  // デバッグ用ログ関数（改良版）
+  function debugLog(message, data) {
+      if (DEBUG_MODE) {
+          var logMessage = '[DEBUG] ' + message;
+          if (data) {
+              logMessage += ' | データ: ' + JSON.stringify(data, null, 2);
+          }
+          console.log(logMessage, data || '');
+          
+          // 重要なエラーのみアラート表示
+          if (message.includes('エラー') || message.includes('失敗')) {
+              alert('[DEBUG] ' + message + (data ? '\n詳細: ' + JSON.stringify(data, null, 2) : ''));
+          }
+      }
+  }
+
+  debugLog('ブックマークレット開始', { API_ENDPOINT: API_ENDPOINT, SK: SK });
+
+  // URLパラメータ解析関数（改良版）
+  function getUrlParam(name) {
+      try {
+          var regex = new RegExp('[?&]' + name + '=([^&#]*)');
+          var results = regex.exec(window.location.search);
+          return results === null ? null : decodeURIComponent(results[1].replace(/\+/g, ' '));
+      } catch (error) {
+          debugLog('URLパラメータ解析エラー', { error: error.message, name: name });
+          return null;
+      }
+  }
+
+  var employeeIdFromUrl = getUrlParam('employeeId');
   
-  // Step 1: 文字列リテラルとテンプレートリテラルを保護
-  console.log('📝 文字列リテラルを保護中...');
-  code = code.replace(/("(?:[^"\\]|\\.)*")|('(?:[^'\\]|\\.)*')|(`(?:[^`\\]|\\.)*`)/g, (match, p1, p2, p3) => {
-    const placeholder = `__JS_STRING_${stringCounter++}__`;
-    stringLiterals.push({ placeholder: placeholder, original: match });
-    return placeholder;
+  debugLog('URL解析結果', { 
+      currentUrl: window.location.href,
+      employeeIdFromUrl: employeeIdFromUrl 
   });
-  console.log(`✅ ${stringLiterals.length}個の文字列リテラルを保護しました`);
 
-  // Step 2: 複数行コメント /* ... */ を削除
-  console.log('🗑️ 複数行コメントを削除中...');
-  const beforeMultilineComments = code.length;
-  code = code.replace(/\/\*[\s\S]*?\*\//g, '');
-  console.log(`✅ ${beforeMultilineComments - code.length}文字の複数行コメントを削除しました`);
+  var pk = employeeIdFromUrl || prompt('データを取得するためのEmployee IDを入力してください:', 'm-yamashita');
 
-  // Step 3: 特定の末尾コメント行を削除
-  console.log('🗑️ 特定のコメント行を削除中...');
-  const beforeSpecificComments = code.length;
-  code = code.replace(/^\s*\/\/minified.*$/gm, '');
-  code = code.replace(/^\s*\/\/ javascript:.*$/gm, '');
-  console.log(`✅ ${beforeSpecificComments - code.length}文字の特定コメントを削除しました`);
-
-  // Step 4: 単一行コメント // を削除（改良版）
-  console.log('🗑️ 単一行コメントを削除中...');
-  const beforeSingleComments = code.length;
-  // より安全な単一行コメント削除（文字列内の//を保護）
-  code = code.replace(/^\s*\/\/.*$/gm, ''); // 行頭のコメント
-  code = code.replace(/([^"'`])\/\/.*$/gm, '$1'); // 行中のコメント（文字列外）
-  console.log(`✅ ${beforeSingleComments - code.length}文字の単一行コメントを削除しました`);
-
-  // Step 5: 空行を削除
-  console.log('🗑️ 空行を削除中...');
-  const beforeEmptyLines = code.split('\n').length;
-  code = code.replace(/^\s*\n/gm, '');
-  const afterEmptyLines = code.split('\n').length;
-  console.log(`✅ ${beforeEmptyLines - afterEmptyLines}行の空行を削除しました`);
-
-  // Step 6: 空白文字の正規化
-  console.log('🔧 空白文字を正規化中...');
-  const beforeWhitespace = code.length;
-  code = code.replace(/\s+/g, ' ');
-  console.log(`✅ ${beforeWhitespace - code.length}文字の空白を正規化しました`);
-
-  // Step 7: 演算子周りのスペース調整
-  console.log('🔧 演算子周りのスペースを調整中...');
-  code = code.replace(/;\s*([^\s])/g, '; $1'); // セミコロン後
-  code = code.replace(/\}\s*\(/g, '} ('); // }の後の(
-  code = code.replace(/\)\s*\(/g, ') ('); // )の後の(
-  code = code.replace(/,\s*([^\s])/g, ', $1'); // カンマ後
-
-  // Step 8: キーワード前のスペース確保
-  console.log('🔧 キーワード前のスペースを確保中...');
-  code = code.replace(/([^\s;{])\s*(var|function|return|if|for|while|do|switch|try|catch|finally|throw|new|else)\s/g, '$1 $2 ');
-
-  // Step 9: 前後の空白をトリム
-  console.log('✂️ 前後の空白をトリム中...');
-  code = code.replace(/^\s+|\s+$/g, '');
-
-  // Step 10: 末尾セミコロンの確保
-  if (!code.endsWith(';')) {
-    code += ';';
-    console.log('✅ 末尾にセミコロンを追加しました');
+  if (!pk) {
+      alert('Employee IDが指定されていないため処理を中止します。');
+      return;
   }
 
-  // Step 11: 文字列リテラルを復元
-  console.log('🔄 文字列リテラルを復元中...');
-  stringLiterals.forEach((item, index) => {
-    const regex = new RegExp(item.placeholder.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&'), 'g');
-    code = code.replace(regex, item.original);
+  debugLog('使用するEmployee ID', { pk: pk });
+
+  // 2. APIからデータを取得する関数（CORS対策版）
+  function fetchData(employeeId, callback) {
+      var url = API_ENDPOINT + '?employeeID=' + encodeURIComponent(employeeId);
+      
+      debugLog('API呼び出し開始', { url: url });
+      
+      // XMLHttpRequestを使用（CORS対策）
+      var xhr = new XMLHttpRequest();
+      xhr.open('GET', url, true);
+      
+      // CORS対策: シンプルリクエストにするためContent-Typeヘッダーを削除
+      // xhr.setRequestHeader('Content-Type', 'application/json'); // この行をコメントアウト
+      
+      // タイムアウト設定（30秒）
+      xhr.timeout = 30000;
+      
+      xhr.onreadystatechange = function() {
+          if (xhr.readyState === 4) {
+              debugLog('API応答受信', { 
+                  status: xhr.status, 
+                  statusText: xhr.statusText,
+                  responseLength: xhr.responseText ? xhr.responseText.length : 0
+              });
+
+              if (xhr.status === 200) {
+                  try {
+                      var data = JSON.parse(xhr.responseText);
+                      debugLog('APIデータ取得成功', { 
+                          dataType: typeof data,
+                          isArray: Array.isArray(data),
+                          dataLength: Array.isArray(data) ? data.length : 'N/A'
+                      });
+
+                      if (!Array.isArray(data)) {
+                          debugLog('APIデータ形式エラー', { expectedType: 'Array', actualType: typeof data });
+                          alert('APIから取得したデータの形式が正しくありません。');
+                          callback(null);
+                          return;
+                      }
+
+                      // 指定されたSKを持つエントリを探す
+                      var targetData = null;
+                      for (var i = 0; i < data.length; i++) {
+                          if (data[i] && data[i].sk === SK) {
+                              targetData = data[i];
+                              break;
+                          }
+                      }
+
+                      if (!targetData) {
+                          var availableSKs = [];
+                          for (var i = 0; i < data.length; i++) {
+                              if (data[i] && data[i].sk) {
+                                  availableSKs.push(data[i].sk);
+                              }
+                          }
+                          debugLog('データ検索結果', { 
+                              searchedSK: SK,
+                              availableSKs: availableSKs,
+                              found: false
+                          });
+                          alert('指定されたソートキー (' + SK + ') に一致するデータが見つかりませんでした。\n利用可能なソートキー: ' + availableSKs.join(', '));
+                          callback(null);
+                          return;
+                      }
+
+                      debugLog('ターゲットデータ発見', { 
+                          targetData: targetData,
+                          hasMeetingData: !!targetData.meeting_data
+                      });
+
+                      if (!targetData.meeting_data) {
+                          debugLog('meeting_dataが存在しません', { targetData: targetData });
+                          alert('取得したデータにmeeting_dataが含まれていません。');
+                          callback(null);
+                          return;
+                      }
+
+                      callback(targetData.meeting_data);
+                  } catch (parseError) {
+                      debugLog('JSON解析エラー', { 
+                          error: parseError.message,
+                          responseText: xhr.responseText.substring(0, 200) + '...' 
+                      });
+                      alert('データの解析に失敗しました: ' + parseError.message);
+                      callback(null);
+                  }
+              } else {
+                  debugLog('API エラー応答', { 
+                      status: xhr.status,
+                      statusText: xhr.statusText,
+                      responseText: xhr.responseText ? xhr.responseText.substring(0, 200) + '...' : 'レスポンスなし'
+                  });
+                  alert('データの取得に失敗しました。\nステータス: ' + xhr.status + ' ' + xhr.statusText);
+                  callback(null);
+              }
+          }
+      };
+
+      xhr.onerror = function() {
+          debugLog('XMLHttpRequest ネットワークエラー');
+          alert('ネットワークエラーが発生しました。インターネット接続を確認してください。');
+          callback(null);
+      };
+
+      xhr.ontimeout = function() {
+          debugLog('XMLHttpRequest タイムアウトエラー');
+          alert('リクエストがタイムアウトしました。しばらくしてから再試行してください。');
+          callback(null);
+      };
+
+      xhr.send();
+  }
+
+  // 3. フォームフィールドのマッピング（拡張版）
+  function getFieldMap() {
+      return {
+          'meeting_purpose': '日報を入力',
+          'cost': 'コスト',
+          'hearing_contents': 'ヒアリング内容',
+          'other': 'その他',
+          'proposal': '提案内容',
+          'reaction': '反応',
+          'visit_purpose': '訪問目的',
+          'meeting_content': '商談内容'
+      };
+  }
+
+  // 4. 取得したデータをフォームフィールドに書き込む関数（改良版）
+  function fillFormFields(meetingData) {
+      if (!meetingData) {
+          debugLog('meetingDataがnullまたはundefined', { meetingData: meetingData });
+          console.warn('meetingDataがnullまたはundefinedのため、フォームフィールドへの書き込みをスキップします。');
+          return;
+      }
+
+      debugLog('フォーム入力開始', { 
+          meetingDataKeys: Object.keys(meetingData),
+          meetingDataLength: Object.keys(meetingData).length
+      });
+
+      var fieldMap = getFieldMap();
+      debugLog('フィールドマップ', { fieldMap: fieldMap });
+
+      var successCount = 0;
+      var failCount = 0;
+      var skippedCount = 0;
+      var results = [];
+
+      // 利用可能なplaceholderを事前に取得
+      var allElements = document.querySelectorAll('input[placeholder], textarea[placeholder]');
+      var availablePlaceholders = [];
+      for (var i = 0; i < allElements.length; i++) {
+          availablePlaceholders.push(allElements[i].placeholder);
+      }
+      
+      debugLog('利用可能なplaceholder', { availablePlaceholders: availablePlaceholders });
+
+      for (var key in fieldMap) {
+          if (meetingData.hasOwnProperty(key)) {
+              var placeholderName = fieldMap[key];
+              var valueToSet = meetingData[key];
+
+              // 空の値はスキップ
+              if (!valueToSet || valueToSet.toString().trim() === '') {
+                  skippedCount++;
+                  results.push('⏭️ ' + key + ': 値が空のためスキップ');
+                  debugLog('値が空のためスキップ', { key: key, value: valueToSet });
+                  continue;
+              }
+
+              debugLog('フィールド処理中', { 
+                  key: key, 
+                  placeholderName: placeholderName, 
+                  valueToSet: valueToSet,
+                  valueLength: valueToSet.toString().length
+              });
+
+              // より柔軟な要素検索（部分一致も含む）
+              var elements = document.querySelectorAll('input[placeholder*="' + placeholderName + '"], textarea[placeholder*="' + placeholderName + '"]');
+              
+              // 完全一致も試す
+              if (elements.length === 0) {
+                  elements = document.querySelectorAll('input[placeholder="' + placeholderName + '"], textarea[placeholder="' + placeholderName + '"]');
+              }
+
+              debugLog('要素検索結果', { 
+                  placeholderName: placeholderName,
+                  foundElements: elements.length,
+                  searchMethod: elements.length > 0 ? '部分一致' : '見つからず'
+              });
+
+              if (elements.length > 0) {
+                  for (var i = 0; i < elements.length; i++) {
+                      var element = elements[i];
+                      try {
+                          // 既存の値をバックアップ
+                          var originalValue = element.value;
+                          
+                          // 値を設定
+                          element.value = valueToSet;
+
+                          // React/Vue.js対応: より多くのイベントを発火
+                          var inputEvent = new Event('input', { bubbles: true, cancelable: true });
+                          var changeEvent = new Event('change', { bubbles: true, cancelable: true });
+                          var focusEvent = new Event('focus', { bubbles: true });
+                          var blurEvent = new Event('blur', { bubbles: true });
+
+                          element.dispatchEvent(focusEvent);
+                          element.dispatchEvent(inputEvent);
+                          element.dispatchEvent(changeEvent);
+                          element.dispatchEvent(blurEvent);
+
+                          successCount++;
+                          results.push('✅ ' + element.tagName + '[placeholder*="' + placeholderName + '"] に "' + (valueToSet.length > 50 ? valueToSet.substring(0, 50) + '...' : valueToSet) + '" を設定');
+                          
+                          debugLog('要素への入力成功', { 
+                              elementIndex: i,
+                              tagName: element.tagName,
+                              placeholderName: placeholderName,
+                              originalValue: originalValue,
+                              newValue: valueToSet
+                          });
+
+                      } catch (elementError) {
+                          failCount++;
+                          results.push('❌ ' + element.tagName + '[placeholder*="' + placeholderName + '"] の設定に失敗: ' + elementError.message);
+                          
+                          debugLog('要素への入力失敗', { 
+                              elementIndex: i,
+                              error: elementError.message,
+                              elementType: element.tagName
+                          });
+                      }
+                  }
+              } else {
+                  failCount++;
+                  results.push('❌ Placeholder "' + placeholderName + '" を持つ要素が見つかりませんでした');
+                  
+                  debugLog('要素が見つからない', { 
+                      placeholderName: placeholderName,
+                      availablePlaceholders: availablePlaceholders
+                  });
+              }
+          } else {
+              var availableKeys = Object.keys(meetingData);
+              debugLog('meetingDataにキーが存在しない', { 
+                  missingKey: key,
+                  availableKeys: availableKeys
+              });
+              results.push('⚠️ meetingDataにキー "' + key + '" が見つかりませんでした');
+          }
+      }
+
+      // 最終結果の表示（改良版）
+      var summaryMessage = '🔄 データ入力完了\n' + 
+                         '✅ 成功: ' + successCount + '件\n' + 
+                         '❌ 失敗: ' + failCount + '件\n' + 
+                         '⏭️ スキップ: ' + skippedCount + '件\n\n';
+      
+      if (DEBUG_MODE || failCount > 0) {
+          summaryMessage += '詳細:\n' + results.join('\n');
+      }
+      
+      alert(summaryMessage);
+      
+      debugLog('フォーム入力完了', { 
+          successCount: successCount, 
+          failCount: failCount,
+          skippedCount: skippedCount,
+          results: results 
+      });
+  }
+
+  // 5. 処理の実行
+  debugLog('メイン処理開始');
+  
+  fetchData(pk, function(meetingData) {
+      if (meetingData) {
+          fillFormFields(meetingData);
+      } else {
+          alert('❌ meetingDataが取得できませんでした。処理を終了します。');
+      }
+      debugLog('メイン処理完了');
   });
-  console.log(`✅ ${stringLiterals.length}個の文字列リテラルを復元しました`);
-
-  // 最終検証
-  console.log('🔍 最終検証中...');
-  
-  // 基本的な構文チェック
-  const openBraces = (code.match(/\{/g) || []).length;
-  const closeBraces = (code.match(/\}/g) || []).length;
-  const openParens = (code.match(/\(/g) || []).length;
-  const closeParens = (code.match(/\)/g) || []).length;
-  
-  if (openBraces !== closeBraces) {
-    console.warn(`⚠️ 警告: 中括弧の数が一致しません (開く: ${openBraces}, 閉じる: ${closeBraces})`);
-  }
-  
-  if (openParens !== closeParens) {
-    console.warn(`⚠️ 警告: 括弧の数が一致しません (開く: ${openParens}, 閉じる: ${closeParens})`);
-  }
-
-  console.log('✅ Minify処理が完了しました');
-  return code;
-}
-
-/**
- * ファイルサイズを人間が読みやすい形式に変換
- */
-function formatFileSize(bytes) {
-  if (bytes < 1024) return bytes + ' B';
-  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
-  return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
-}
-
-/**
- * 圧縮率を計算
- */
-function calculateCompressionRatio(originalSize, compressedSize) {
-  const ratio = ((originalSize - compressedSize) / originalSize * 100).toFixed(1);
-  return ratio + '%';
-}
-
-// メイン処理
-console.log('🚀 JavaScript Minifier - 改良版');
-console.log('================================');
-
-// コマンドライン引数の取得
-const inputFileName = process.argv[2];
-const outputFileName = process.argv[3] || 'bookmarklet.js';
-
-if (!inputFileName) {
-  console.error('❌ エラー: 入力ファイル名が指定されていません');
-  console.log('使用方法: node minify.js <入力ファイル名> [出力ファイル名]');
-  console.log('例: node minify.js code.js bookmarklet.js');
-  process.exit(1);
-}
-
-const inputFilePath = path.resolve(process.cwd(), inputFileName);
-const outputFilePath = path.resolve(process.cwd(), outputFileName);
-
-console.log(`📂 入力ファイル: ${inputFileName}`);
-console.log(`📂 出力ファイル: ${outputFileName}`);
-console.log('--------------------------------');
-
-try {
-  // ファイル存在チェック
-  if (!fs.existsSync(inputFilePath)) {
-    throw new Error(`入力ファイルが存在しません: ${inputFileName}`);
-  }
-
-  // ファイル読み込み
-  console.log('📖 ファイルを読み込み中...');
-  let originalCode = fs.readFileSync(inputFilePath, 'utf8');
-  const originalSize = originalCode.length;
-  
-  console.log(`📊 元ファイルサイズ: ${formatFileSize(originalSize)}`);
-
-  // javascript: プレフィックスの除去
-  const hadPrefix = originalCode.startsWith('javascript:');
-  if (hadPrefix) {
-    originalCode = originalCode.replace(/^javascript:\s*/, '');
-    console.log('✅ javascript: プレフィックスを除去しました');
-  }
-
-  // Minify実行
-  const minifiedCode = minifyJavaScript(originalCode);
-  const minifiedSize = minifiedCode.length;
-
-  // 結果の保存
-  console.log('💾 結果を保存中...');
-  const finalCode = `javascript:${minifiedCode}`;
-  fs.writeFileSync(outputFilePath, finalCode, 'utf8');
-
-  // 統計情報の表示
-  console.log('--------------------------------');
-  console.log('📊 処理結果:');
-  console.log(`  元のサイズ: ${formatFileSize(originalSize)}`);
-  console.log(`  圧縮後サイズ: ${formatFileSize(minifiedSize)}`);
-  console.log(`  最終ファイルサイズ: ${formatFileSize(finalCode.length)}`);
-  console.log(`  圧縮率: ${calculateCompressionRatio(originalSize, minifiedSize)}`);
-  console.log(`  出力パス: ${outputFilePath}`);
-  console.log('--------------------------------');
-  console.log('✅ 処理完了！');
-
-  // 追加の検証
-  if (minifiedCode.length < 10) {
-    console.warn('⚠️ 警告: 出力が非常に短いです。処理に問題がある可能性があります。');
-  }
-
-} catch (error) {
-  console.error('❌ エラーが発生しました:');
-  console.error(`  ${error.message}`);
-  
-  if (error.code === 'ENOENT') {
-    console.error('  ファイルパスを確認してください。');
-  } else if (error.code === 'EACCES') {
-    console.error('  ファイルアクセス権限を確認してください。');
-  }
-  
-  process.exit(1);
-}
+})();

@@ -1,0 +1,28 @@
+{
+    "name": "bookmarklet-test-server",
+    "version": "1.0.0",
+    "description": "Bookmarkletテスト用のローカルHTTPサーバー（CORS対応）",
+    "main": "server.js",
+    "scripts": {
+      "start": "node server.js",
+      "dev": "node server.js",
+      "server": "node server.js",
+      "serve": "node server.js",
+      "minify": "node minify.js code.js",
+      "build": "npm run minify",
+      "test": "npm run minify && npm run serve"
+    },
+    "keywords": [
+      "bookmarklet",
+      "cors",
+      "local-server",
+      "development"
+    ],
+    "author": "Your Name",
+    "license": "MIT",
+    "engines": {
+      "node": ">=12.0.0"
+    },
+    "devDependencies": {},
+    "dependencies": {}
+  }

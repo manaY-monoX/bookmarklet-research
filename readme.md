@@ -79,15 +79,73 @@ node minify.js code.js
 ### データ構造
 
 DynamoDBから取得される想定データ構造：
-```javascript
+
+作成したレポートの構造を保存するDB（result）
+
+### DynamoDB
+
+``` json
 {
-  "sk": "20250521095554",
-  "meeting_data": {
-    "meeting_purpose": "営業会議の内容...",
-    // その他のフィールド
-  }
+  "pk": {
+    "S": string
+  },
+  "sk": {
+    "S": string
+  },
+  "customPrompt": {
+    "S": string
+  },
+  "meeting_data": {
+    "M": {
+      "cost": {
+        "S": string
+      },
+      "hearing_contents": {
+        "S": string
+      },
+      "meeting_purpose": {
+        "S": string
+      },
+      "next_actions": {
+        "S": string
+      },
+      "other": {
+        "S": string
+      },
+      "proposal": {
+        "S": string
+      },
+      "reaction": {
+        "S": string
+      }
+    }
+  },
+  "states": {
+    "S": string
+  },
+  "transcribedText": {
+    "S": string
+  }
 }
 ```
+<!-- 
+### custom_prompt
+
+custom prompt libraryを保存するDB
+
+``` json
+{
+  "pk": {
+    "S": "{primary_key_uuid}"
+  },
+  "prompt": {
+    "S": "{prompt_content}"
+  },
+  "prompt_name": {
+    "S": "{prompt_title}"
+  }
+}
+``` -->
 
 ### フォームフィールド対応
 
@@ -182,6 +240,5 @@ var DEBUG_MODE = false; // 本番環境では false に設定
 
 ---
 
-**開発者**: MONO-X 開発チーム  
+**検証**: MONO-X [山下](manapuraza.com)  
 **最終更新**: 2025年5月28日  
-**対応フレームワーク**: React 19, Next.js 15

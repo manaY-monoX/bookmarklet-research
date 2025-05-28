@@ -1,259 +1,205 @@
-javascript:(function(){
-    // 1. 設定値の定義
-    var API_ENDPOINT = 'https://aablnq3wnk.execute-api.ap-northeast-1.amazonaws.com/report-v2t-dev';
-    var SK = '20250521095554'; // 今回指定されたソートキー
-    var DEBUG_MODE = true;
-    
-    // デバッグ用アラート関数
-    function debugAlert(message, data) {
-        if (DEBUG_MODE) {
-            var alertMessage = '[DEBUG] ' + message;
-            if (data) {
-                alertMessage += '\n詳細: ' + JSON.stringify(data, null, 2);
-            }
-            alert(alertMessage);
-            console.log('[DEBUG] ' + message, data);
-        }
-    }
+// minify.js - 改良版
 
-    debugAlert('ブックマークレット開始', { API_ENDPOINT: API_ENDPOINT, SK: SK });
+const fs = require('fs');
+const path = require('path');
 
-    // URLパラメータの解析（SafariでもURLSearchParamsを避ける）
-    function getUrlParam(name) {
-        var regex = new RegExp('[?&]' + name + '=([^&#]*)');
-        var results = regex.exec(window.location.search);
-        return results === null ? null : decodeURIComponent(results[1].replace(/\+/g, ' '));
-    }
+/**
+ * JavaScriptコードをMinifyして一行にする関数（改良版）
+ * @param {string} code - Minifyする元のJavaScriptコード
+ * @returns {string} Minifyされた一行のJavaScriptコード
+ */
+function minifyJavaScript(code) {
+  console.log('🔄 Minify処理を開始します...');
+  
+  const stringLiterals = [];
+  let stringCounter = 0;
+  
+  // Step 1: 文字列リテラルとテンプレートリテラルを保護
+  console.log('📝 文字列リテラルを保護中...');
+  code = code.replace(/("(?:[^"\\]|\\.)*")|('(?:[^'\\]|\\.)*')|(`(?:[^`\\]|\\.)*`)/g, (match, p1, p2, p3) => {
+    const placeholder = `__JS_STRING_${stringCounter++}__`;
+    stringLiterals.push({ placeholder: placeholder, original: match });
+    return placeholder;
+  });
+  console.log(`✅ ${stringLiterals.length}個の文字列リテラルを保護しました`);
 
-    var employeeIdFromUrl = getUrlParam('employeeId');
-    
-    debugAlert('URL解析結果', { 
-        currentUrl: window.location.href,
-        employeeIdFromUrl: employeeIdFromUrl 
-    });
+  // Step 2: 複数行コメント /* ... */ を削除
+  console.log('🗑️ 複数行コメントを削除中...');
+  const beforeMultilineComments = code.length;
+  code = code.replace(/\/\*[\s\S]*?\*\//g, '');
+  console.log(`✅ ${beforeMultilineComments - code.length}文字の複数行コメントを削除しました`);
 
-    var pk = employeeIdFromUrl || prompt('データを取得するためのEmployee IDを入力してください:', 'm-yamashita');
+  // Step 3: 特定の末尾コメント行を削除
+  console.log('🗑️ 特定のコメント行を削除中...');
+  const beforeSpecificComments = code.length;
+  code = code.replace(/^\s*\/\/minified.*$/gm, '');
+  code = code.replace(/^\s*\/\/ javascript:.*$/gm, '');
+  console.log(`✅ ${beforeSpecificComments - code.length}文字の特定コメントを削除しました`);
 
-    if (!pk) {
-        alert('Employee IDが指定されていないため処理を中止します。');
-        return;
-    }
+  // Step 4: 単一行コメント // を削除（改良版）
+  console.log('🗑️ 単一行コメントを削除中...');
+  const beforeSingleComments = code.length;
+  // より安全な単一行コメント削除（文字列内の//を保護）
+  code = code.replace(/^\s*\/\/.*$/gm, ''); // 行頭のコメント
+  code = code.replace(/([^"'`])\/\/.*$/gm, '$1'); // 行中のコメント（文字列外）
+  console.log(`✅ ${beforeSingleComments - code.length}文字の単一行コメントを削除しました`);
 
-    debugAlert('使用するEmployee ID', { pk: pk });
+  // Step 5: 空行を削除
+  console.log('🗑️ 空行を削除中...');
+  const beforeEmptyLines = code.split('\n').length;
+  code = code.replace(/^\s*\n/gm, '');
+  const afterEmptyLines = code.split('\n').length;
+  console.log(`✅ ${beforeEmptyLines - afterEmptyLines}行の空行を削除しました`);
 
-    // 2. APIからデータを取得する関数
-    function fetchData(employeeId, callback) {
-        var url = API_ENDPOINT + '?employeeID=' + encodeURIComponent(employeeId);
-        
-        debugAlert('API呼び出し開始', { url: url });
-        
-        // XMLHttpRequestを使用（iOSでのfetch互換性を考慮）
-        var xhr = new XMLHttpRequest();
-        xhr.open('GET', url, true);
-        xhr.setRequestHeader('Content-Type', 'application/json');
-        
-        xhr.onreadystatechange = function() {
-            if (xhr.readyState === 4) {
-                debugAlert('API応答受信', { 
-                    status: xhr.status, 
-                    statusText: xhr.statusText 
-                });
+  // Step 6: 空白文字の正規化
+  console.log('🔧 空白文字を正規化中...');
+  const beforeWhitespace = code.length;
+  code = code.replace(/\s+/g, ' ');
+  console.log(`✅ ${beforeWhitespace - code.length}文字の空白を正規化しました`);
 
-                if (xhr.status === 200) {
-                    try {
-                        var data = JSON.parse(xhr.responseText);
-                        debugAlert('APIデータ取得成功', { 
-                            dataType: typeof data,
-                            isArray: Array.isArray(data),
-                            dataLength: Array.isArray(data) ? data.length : 'N/A'
-                        });
+  // Step 7: 演算子周りのスペース調整
+  console.log('🔧 演算子周りのスペースを調整中...');
+  code = code.replace(/;\s*([^\s])/g, '; $1'); // セミコロン後
+  code = code.replace(/\}\s*\(/g, '} ('); // }の後の(
+  code = code.replace(/\)\s*\(/g, ') ('); // )の後の(
+  code = code.replace(/,\s*([^\s])/g, ', $1'); // カンマ後
 
-                        // 指定されたSKを持つエントリを探す
-                        var targetData = null;
-                        for (var i = 0; i < data.length; i++) {
-                            if (data[i].sk === SK) {
-                                targetData = data[i];
-                                break;
-                            }
-                        }
+  // Step 8: キーワード前のスペース確保
+  console.log('🔧 キーワード前のスペースを確保中...');
+  code = code.replace(/([^\s;{])\s*(var|function|return|if|for|while|do|switch|try|catch|finally|throw|new|else)\s/g, '$1 $2 ');
 
-                        if (!targetData) {
-                            var availableSKs = [];
-                            for (var i = 0; i < data.length; i++) {
-                                availableSKs.push(data[i].sk);
-                            }
-                            debugAlert('データ検索結果', { 
-                                searchedSK: SK,
-                                availableSKs: availableSKs,
-                                found: false
-                            });
-                            alert('指定されたソートキー (' + SK + ') に一致するデータが見つかりませんでした。');
-                            callback(null);
-                            return;
-                        }
+  // Step 9: 前後の空白をトリム
+  console.log('✂️ 前後の空白をトリム中...');
+  code = code.replace(/^\s+|\s+$/g, '');
 
-                        debugAlert('ターゲットデータ発見', { 
-                            targetData: targetData,
-                            meetingData: targetData.meeting_data 
-                        });
+  // Step 10: 末尾セミコロンの確保
+  if (!code.endsWith(';')) {
+    code += ';';
+    console.log('✅ 末尾にセミコロンを追加しました');
+  }
 
-                        callback(targetData.meeting_data);
-                    } catch (parseError) {
-                        debugAlert('JSON解析エラー', { 
-                            error: parseError.message,
-                            responseText: xhr.responseText 
-                        });
-                        alert('データの解析に失敗しました: ' + parseError.message);
-                        callback(null);
-                    }
-                } else {
-                    debugAlert('API エラー応答', { 
-                        status: xhr.status,
-                        responseText: xhr.responseText 
-                    });
-                    alert('データの取得に失敗しました。ステータス: ' + xhr.status);
-                    callback(null);
-                }
-            }
-        };
+  // Step 11: 文字列リテラルを復元
+  console.log('🔄 文字列リテラルを復元中...');
+  stringLiterals.forEach((item, index) => {
+    const regex = new RegExp(item.placeholder.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&'), 'g');
+    code = code.replace(regex, item.original);
+  });
+  console.log(`✅ ${stringLiterals.length}個の文字列リテラルを復元しました`);
 
-        xhr.onerror = function() {
-            debugAlert('XMLHttpRequest エラー');
-            alert('ネットワークエラーが発生しました。');
-            callback(null);
-        };
+  // 最終検証
+  console.log('🔍 最終検証中...');
+  
+  // 基本的な構文チェック
+  const openBraces = (code.match(/\{/g) || []).length;
+  const closeBraces = (code.match(/\}/g) || []).length;
+  const openParens = (code.match(/\(/g) || []).length;
+  const closeParens = (code.match(/\)/g) || []).length;
+  
+  if (openBraces !== closeBraces) {
+    console.warn(`⚠️ 警告: 中括弧の数が一致しません (開く: ${openBraces}, 閉じる: ${closeBraces})`);
+  }
+  
+  if (openParens !== closeParens) {
+    console.warn(`⚠️ 警告: 括弧の数が一致しません (開く: ${openParens}, 閉じる: ${closeParens})`);
+  }
 
-        xhr.send();
-    }
+  console.log('✅ Minify処理が完了しました');
+  return code;
+}
 
-    // 3. 取得したデータをフォームフィールドに書き込む関数
-    function fillFormFields(meetingData) {
-        if (!meetingData) {
-            debugAlert('meetingDataがnullまたはundefined', { meetingData: meetingData });
-            console.warn('meetingDataがnullまたはundefinedのため、フォームフィールドへの書き込みをスキップします。');
-            return;
-        }
+/**
+ * ファイルサイズを人間が読みやすい形式に変換
+ */
+function formatFileSize(bytes) {
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+  return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+}
 
-        debugAlert('フォーム入力開始', { meetingData: meetingData });
+/**
+ * 圧縮率を計算
+ */
+function calculateCompressionRatio(originalSize, compressedSize) {
+  const ratio = ((originalSize - compressedSize) / originalSize * 100).toFixed(1);
+  return ratio + '%';
+}
 
-        // DynamoDBのデータ構造に応じてフィールドをマップ
-        var fieldMap = {
-            'meeting_purpose': '日報を入力'
-            // 他のフィールドも必要に応じて追加
-            // 'cost': 'cost',
-            // 'hearing_contents': 'hearing_contents',
-            // 'other': 'other',
-            // 'proposal': 'proposal',
-            // 'reaction': 'reaction'
-        };
+// メイン処理
+console.log('🚀 JavaScript Minifier - 改良版');
+console.log('================================');
 
-        debugAlert('フィールドマップ', { fieldMap: fieldMap });
+// コマンドライン引数の取得
+const inputFileName = process.argv[2];
+const outputFileName = process.argv[3] || 'bookmarklet.js';
 
-        var successCount = 0;
-        var failCount = 0;
-        var results = [];
+if (!inputFileName) {
+  console.error('❌ エラー: 入力ファイル名が指定されていません');
+  console.log('使用方法: node minify.js <入力ファイル名> [出力ファイル名]');
+  console.log('例: node minify.js code.js bookmarklet.js');
+  process.exit(1);
+}
 
-        for (var key in fieldMap) {
-            if (meetingData.hasOwnProperty(key)) {
-                var placeholderName = fieldMap[key];
-                var valueToSet = meetingData[key];
+const inputFilePath = path.resolve(process.cwd(), inputFileName);
+const outputFilePath = path.resolve(process.cwd(), outputFileName);
 
-                debugAlert('フィールド処理中', { 
-                    key: key, 
-                    placeholderName: placeholderName, 
-                    valueToSet: valueToSet 
-                });
+console.log(`📂 入力ファイル: ${inputFileName}`);
+console.log(`📂 出力ファイル: ${outputFileName}`);
+console.log('--------------------------------');
 
-                // inputタグとtextareaタグの両方を検索
-                var elements = document.querySelectorAll('input[placeholder="' + placeholderName + '"], textarea[placeholder="' + placeholderName + '"]');
+try {
+  // ファイル存在チェック
+  if (!fs.existsSync(inputFilePath)) {
+    throw new Error(`入力ファイルが存在しません: ${inputFileName}`);
+  }
 
-                debugAlert('要素検索結果', { 
-                    placeholderName: placeholderName,
-                    foundElements: elements.length
-                });
+  // ファイル読み込み
+  console.log('📖 ファイルを読み込み中...');
+  let originalCode = fs.readFileSync(inputFilePath, 'utf8');
+  const originalSize = originalCode.length;
+  
+  console.log(`📊 元ファイルサイズ: ${formatFileSize(originalSize)}`);
 
-                if (elements.length > 0) {
-                    for (var i = 0; i < elements.length; i++) {
-                        var element = elements[i];
-                        try {
-                            // 値を設定
-                            element.value = valueToSet;
+  // javascript: プレフィックスの除去
+  const hadPrefix = originalCode.startsWith('javascript:');
+  if (hadPrefix) {
+    originalCode = originalCode.replace(/^javascript:\s*/, '');
+    console.log('✅ javascript: プレフィックスを除去しました');
+  }
 
-                            // Reactがvalueの変更を検知できるようにイベントを発火
-                            var inputEvent = new Event('input', { bubbles: true });
-                            element.dispatchEvent(inputEvent);
-                            
-                            var changeEvent = new Event('change', { bubbles: true });
-                            element.dispatchEvent(changeEvent);
+  // Minify実行
+  const minifiedCode = minifyJavaScript(originalCode);
+  const minifiedSize = minifiedCode.length;
 
-                            successCount++;
-                            results.push('✅ ' + element.tagName + '[placeholder="' + placeholderName + '"] に "' + valueToSet + '" を設定');
-                            
-                            debugAlert('要素への入力成功', { 
-                                elementIndex: i,
-                                tagName: element.tagName,
-                                placeholderName: placeholderName,
-                                valueToSet: valueToSet
-                            });
+  // 結果の保存
+  console.log('💾 結果を保存中...');
+  const finalCode = `javascript:${minifiedCode}`;
+  fs.writeFileSync(outputFilePath, finalCode, 'utf8');
 
-                        } catch (elementError) {
-                            failCount++;
-                            results.push('❌ ' + element.tagName + '[placeholder="' + placeholderName + '"] の設定に失敗: ' + elementError.message);
-                            
-                            debugAlert('要素への入力失敗', { 
-                                elementIndex: i,
-                                error: elementError.message
-                            });
-                        }
-                    }
-                } else {
-                    failCount++;
-                    results.push('❌ Placeholder "' + placeholderName + '" を持つ要素が見つかりませんでした');
-                    
-                    var allPlaceholders = [];
-                    var allElements = document.querySelectorAll('input[placeholder], textarea[placeholder]');
-                    for (var i = 0; i < allElements.length; i++) {
-                        allPlaceholders.push(allElements[i].placeholder);
-                    }
-                    
-                    debugAlert('要素が見つからない', { 
-                        placeholderName: placeholderName,
-                        availablePlaceholders: allPlaceholders
-                    });
-                }
-            } else {
-                var availableKeys = [];
-                for (var prop in meetingData) {
-                    availableKeys.push(prop);
-                }
-                debugAlert('meetingDataにキーが存在しない', { 
-                    missingKey: key,
-                    availableKeys: availableKeys
-                });
-                results.push('⚠️ meetingDataにキー "' + key + '" が見つかりませんでした');
-            }
-        }
+  // 統計情報の表示
+  console.log('--------------------------------');
+  console.log('📊 処理結果:');
+  console.log(`  元のサイズ: ${formatFileSize(originalSize)}`);
+  console.log(`  圧縮後サイズ: ${formatFileSize(minifiedSize)}`);
+  console.log(`  最終ファイルサイズ: ${formatFileSize(finalCode.length)}`);
+  console.log(`  圧縮率: ${calculateCompressionRatio(originalSize, minifiedSize)}`);
+  console.log(`  出力パス: ${outputFilePath}`);
+  console.log('--------------------------------');
+  console.log('✅ 処理完了！');
 
-        // 最終結果の表示
-        var summaryMessage = 'データ入力完了\n成功: ' + successCount + '件\n失敗: ' + failCount + '件\n\n詳細:\n' + results.join('\n');
-        alert(summaryMessage);
-        
-        debugAlert('フォーム入力完了', { 
-            successCount: successCount, 
-            failCount: failCount, 
-            results: results 
-        });
-    }
+  // 追加の検証
+  if (minifiedCode.length < 10) {
+    console.warn('⚠️ 警告: 出力が非常に短いです。処理に問題がある可能性があります。');
+  }
 
-    // 4. 処理の実行
-    debugAlert('メイン処理開始');
-    
-    fetchData(pk, function(meetingData) {
-        if (meetingData) {
-            fillFormFields(meetingData);
-        } else {
-            alert('meetingDataが取得できませんでした。処理を終了します。');
-        }
-        debugAlert('メイン処理完了');
-    });
-})();
+} catch (error) {
+  console.error('❌ エラーが発生しました:');
+  console.error(`  ${error.message}`);
+  
+  if (error.code === 'ENOENT') {
+    console.error('  ファイルパスを確認してください。');
+  } else if (error.code === 'EACCES') {
+    console.error('  ファイルアクセス権限を確認してください。');
+  }
+  
+  process.exit(1);
+}

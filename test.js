@@ -1,1 +1,2 @@
+// 動くことが検証済み（Win/Chrome, iOS/Safari, Mac/Safari）
 javascript:(function(){alert('Hello from Bookmarklet!');console.log('Page Title:',document.title);console.log('Page URL:',window.location.href);window.location.href='https://manapuraza.com';})();

@@ -1,45 +1,187 @@
-# Bookmarklet Tests
+# Bookmarklet for Sales Report Auto-Fill
 
 ## 概要
 
-このリポジトリは、Bookmarkletのテスト用に作成されたものです。Bookmarkletは、ブラウザのブックマークバーに保存できる小さなJavaScriptコードで、ウェブページ上で直接実行できます。
+このプロジェクトは、営業日報システムのフォーム入力を自動化するBookmarkletです。AWS API Gateway経由でDynamoDBからデータを取得し、Webフォームの指定されたplaceholderを持つ要素に自動的にデータを入力します。
+
+## 主な機能
+
+- **データ取得**: AWS API Gateway経由でDynamoDBから営業データを取得
+- **フォーム自動入力**: 取得したデータを対応するフォームフィールドに自動入力
+- **デバッグ機能**: 詳細なデバッグ情報をコンソールとアラートで表示
+- **エラーハンドリング**: API呼び出しやデータ処理のエラーを適切に処理
+- **React対応**: React アプリケーションでのフォーム入力に対応（inputとchangeイベントを発火）
+
+## ファイル構成
+
+```
+├── index.html          # テスト用のサンプル営業日報フォーム
+├── code.js             # メインのBookmarkletソースコード（開発用）
+├── paste.txt           # code.jsのフォーマット済みバージョン
+├── bookmarklet.js      # 圧縮されたBookmarkletコード（本番用）
+├── minify.js           # JavaScriptコード圧縮ツール
+├── test.js             # 動作確認用のシンプルなBookmarklet
+└── readme.md           # このドキュメント
+```
 
 ## 使用方法
 
-1. index.hsmlをブラウザで開きます。
-2. 下にあるBookmarkletの作成方法を参照し、Bookamkletコードを作成します。
-3. ブックマークバーに表示されている「Bookmarklet」をクリックします。
-4. ブックマークレットが実行され、指定されたアクションがウェブページ上で実行されます。
+### 1. セットアップ
 
-## Bookmarkletの作成方法
+1. **Node.jsの準備**: minify.jsの実行にはNode.jsが必要です
+2. **API設定の確認**: `code.js`内の以下の設定値を確認してください：
+   ```javascript
+   var API_ENDPOINT = 'https://aablnq3wnk.execute-api.ap-northeast-1.amazonaws.com/report-v2t-dev';
+   var SK = '20250521095554'; // 対象データのソートキー
+   ```
+3. code.jsのminify
 
-Bookmarkletを作成するには、以下の手順に従います。
-
-1. terminalで以下のコマンドを実行して、code.jsをminify.jsで圧縮します。
-
-``` bash
-
-## minify.js実行コマンド
+`minify.js`により、`code.js`をブックマーク用にminifyします。
 
 ``` bash
 node minify.js code.js
 ```
 
-2. minify.jsを実行すると、圧縮されたJavaScriptコード(bookmarklet.js)が生成されます。
+### 2. Bookmarkletの作成
 
-3. 生成されたbookmarklet.jsの内容をコピーします。
+1. **コードの圧縮**:
+   ```bash
+   node minify.js code.js
+   ```
 
-4. ブラウザのブックマークバーに新しいブックマークを作成し、URLフィールドに以下の形式でコードを貼り付けます。
+2. **Bookmarkletの登録**:
+   - 生成された`bookmarklet.js`の内容をコピー
+   - ブラウザのブックマークバーに新しいブックマークを作成
+   - URLフィールドにコピーしたコードを貼り付け
+   - 適切な名前（例：「営業日報自動入力」）を設定して保存
 
-5. ブックマークの名前を設定し、保存します。
+### 3. 実行方法
 
-## ファイルの説明
+1. **テスト環境での確認**:
+   - `index.html`をブラウザで開く
+   - 作成したBookmarkletをクリック
+   - Employee IDの入力を求められた場合は適切なIDを入力
 
-このリポジトリには、以下のファイルが含まれています。
+2. **本番環境での使用**:
+   - 営業日報フォームのページでBookmarkletを実行
+   - URLパラメータに`?employeeId=YOUR_ID`が含まれている場合は自動的に使用
+   - 含まれていない場合はプロンプトでEmployee IDの入力を求められます
 
-- `index.hsml`: Bookmarkletのテスト用のHTMLファイルです。ブラウザで開いて、Bookmarkletを実行できます。
-- `code.js`: BookmarkletのJavaScriptコードです。これをminify.jsで圧縮して、Bookmarkletとして使用します。
-- `minify.js`: code.jsを圧縮するためのスクリプトです。Node.jsを使用して実行します。
-- `test.js`: Bookmarkletのテスト用のJavaScriptコードです。Bookmarkletが正しく動作するかを確認するために使用します。（Safari/iOS, Safari/macでは動くことを確認）
-- `bookmarklet.js`: minify.jsによってcode.jsを圧縮し、生成されたBookmarkletコードです。
-- `README.md`: このドキュメントファイルです。Bookmarkletの使用方法や作成方法について説明しています。
+## 技術仕様
+
+### API接続
+
+- **エンドポイント**: AWS API Gateway
+- **認証**: なし（パブリックAPI）
+- **データ形式**: JSON
+- **HTTPメソッド**: GET
+
+### データ構造
+
+DynamoDBから取得される想定データ構造：
+```javascript
+{
+  "sk": "20250521095554",
+  "meeting_data": {
+    "meeting_purpose": "営業会議の内容...",
+    // その他のフィールド
+  }
+}
+```
+
+### フォームフィールド対応
+
+現在対応しているフィールド：
+```javascript
+var fieldMap = {
+  'meeting_purpose': '日報を入力'
+  // 必要に応じて他のフィールドも追加可能
+};
+```
+
+### ブラウザ互換性
+
+- **Chrome**: 完全対応
+- **Safari（macOS/iOS）**: 対応確認済み
+- **Firefox**: 対応
+- **その他**: XMLHttpRequestを使用しているため、現代的なブラウザで動作
+
+## カスタマイズ
+
+### フィールドマッピングの追加
+
+`code.js`内の`fieldMap`オブジェクトを編集して、新しいフィールド対応を追加できます：
+
+```javascript
+var fieldMap = {
+  'meeting_purpose': '日報を入力',
+  'cost': 'コスト',
+  'hearing_contents': 'ヒアリング内容',
+  'proposal': '提案内容',
+  'reaction': '反応'
+};
+```
+
+### デバッグモードの切り替え
+
+開発時は`DEBUG_MODE = true`、本番時は`false`に設定：
+
+```javascript
+var DEBUG_MODE = false; // 本番環境では false に設定
+```
+
+## トラブルシューティング
+
+### よくある問題
+
+1. **「データが見つかりません」エラー**
+   - ソートキー（SK）の値を確認
+   - Employee IDが正しいか確認
+   - API エンドポイントにアクセス可能か確認
+
+2. **フォームに入力されない**
+   - placeholder属性の値がfieldMapと一致しているか確認
+   - React アプリケーションの場合、イベントが正しく発火されているか確認
+
+3. **ネットワークエラー**
+   - CORS設定を確認
+   - API Gateway の設定を確認
+
+### デバッグ情報の確認
+
+デバッグモードが有効な場合、以下の情報が表示されます：
+- API呼び出しの詳細
+- 取得したデータの構造
+- フォーム要素の検索結果
+- 入力処理の成功/失敗
+
+## セキュリティ注意事項
+
+- **APIキー**: 現在はパブリックAPIを使用していますが、本番環境では適切な認証を実装してください
+- **データの機密性**: 営業データが含まれるため、HTTPS通信を必須としてください
+- **クロスサイトスクリプティング**: 入力データの検証を適切に行ってください
+
+## 開発者向け情報
+
+### コード構造
+
+```javascript
+// 1. 設定値の定義
+// 2. ヘルパー関数の定義
+// 3. API呼び出し関数
+// 4. フォーム入力関数
+// 5. メイン処理の実行
+```
+
+### 拡張方針
+
+- 複数のフィールドタイプ対応
+- エラー処理の強化
+- ユーザーインターフェースの改善
+- 設定の外部化
+
+---
+
+**開発者**: MONO-X 開発チーム  
+**最終更新**: 2025年5月28日  
+**対応フレームワーク**: React 19, Next.js 15
